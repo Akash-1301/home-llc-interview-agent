@@ -1,0 +1,271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Home.LLC AI Agent | Akash's Interview Bot</title>
+    <style>
+        :root {
+            --primary: #2A2F4F;
+            --secondary: #917FB3;
+            --accent: #E5BEEC;
+            --text: #2C3333;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', system-ui, sans-serif;
+            background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%);
+            color: var(--text);
+            min-height: 100vh;
+            padding: 2rem;
+        }
+
+        .container {
+            max-width: 800px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 1.5rem;
+            box-shadow: 0 12px 24px rgba(0,0,0,0.1);
+            padding: 2rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 2rem;
+            position: relative;
+        }
+
+        h1 {
+            color: var(--primary);
+            font-size: 2.5rem;
+            margin-bottom: 0.5rem;
+            font-weight: 700;
+        }
+
+        .controls {
+            display: flex;
+            flex-direction: column;
+            gap: 1.5rem;
+            align-items: center;
+            margin: 2rem 0;
+        }
+
+        .mic-btn {
+            background: var(--primary);
+            color: white;
+            border: none;
+            padding: 1.25rem 2.5rem;
+            border-radius: 3rem;
+            font-size: 1.1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            box-shadow: 0 8px 16px rgba(42,47,79,0.2);
+        }
+
+        .mic-btn:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 12px 24px rgba(42,47,79,0.25);
+            background: var(--secondary);
+        }
+
+        .status-indicator {
+            text-align: center;
+            color: #6c757d;
+            font-size: 0.9rem;
+            margin: 1rem 0;
+        }
+
+        .response-container {
+            background: #ffffff;
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-top: 2rem;
+            border: 1px solid rgba(0,0,0,0.05);
+        }
+
+        .response-card {
+            background: linear-gradient(135deg, rgba(234,236,238,0.4) 0%, rgba(241,243,245,0.4) 100%);
+            border-radius: 1rem;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .user-prompt {
+            color: var(--primary);
+            font-weight: 600;
+            margin-bottom: 0.75rem;
+            font-size: 0.95rem;
+        }
+
+        .ai-response {
+            color: var(--text);
+            line-height: 1.6;
+            white-space: pre-wrap;
+            font-size: 1rem;
+        }
+
+        .loading {
+            display: flex;
+            justify-content: center;
+            padding: 2rem;
+        }
+
+        .loader {
+            width: 40px;
+            height: 40px;
+            border: 3px solid rgba(42,47,79,0.1);
+            border-top-color: var(--primary);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        @media (max-width: 640px) {
+            body { padding: 1rem; }
+            .container { border-radius: 1rem; }
+            h1 { font-size: 2rem; }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Akash's AI Interview Agent</h1>
+            <p>Ask me about my professional background and skills</p>
+        </header>
+
+        <div class="controls">
+            <button class="mic-btn" id="micButton">
+                <span>🎤</span> Start Voice Session
+            </button>
+            <div class="status-indicator" id="status">Click the microphone to begin</div>
+        </div>
+
+        <div class="response-container" id="responseContainer">
+            <!-- Responses will be inserted here -->
+        </div>
+    </div>
+
+    <script>
+        // Professional-grade answer bank
+        const PROFILE = {
+            "life story": `I'm a passionate technologist with 3 years of experience in full-stack development. My journey began in Mumbai where I taught myself coding through online resources, eventually leading to professional roles building AI-powered applications. What drives me is creating technology that solves real-world problems.`,
+            "superpower": `My #1 strength is bridging technical and non-technical domains. I excel at translating complex technical concepts into business value, enabling cross-functional teams to collaborate effectively on AI initiatives.`,
+            "growth areas": `1. Deepening expertise in large language model architectures\n2. Developing strategic product management skills\n3. Enhancing public speaking abilities for technical audiences`,
+            "misconception": `Some colleagues initially think I'm purely technical, but I've consistently demonstrated strong leadership capabilities by mentoring junior developers and leading cross-functional projects to successful completion.`,
+            "boundaries": `I systematically challenge myself through:\n• Quarterly technical certifications\n• Leading high-impact projects outside my comfort zone\n• Regular participation in hackathons to test new technologies`,
+            "default": `Thank you for your question! I'm prepared to discuss my professional experience and qualifications in detail. Could you please rephrase or ask about a specific aspect of my background?`
+        };
+
+        // Enterprise-grade voice recognition handler
+        class VoiceAgent {
+            constructor() {
+                this.recognition = null;
+                this.isListening = false;
+                this.setupEventListeners();
+            }
+
+            initializeRecognition() {
+                this.recognition = new (window.SpeechRecognition || window.webkitSpeechRecognition)();
+                this.recognition.continuous = false;
+                this.recognition.interimResults = false;
+                this.recognition.lang = 'en-US';
+                this.recognition.maxAlternatives = 1;
+
+                this.recognition.onstart = () => this.onListeningStart();
+                this.recognition.onresult = (e) => this.processResult(e);
+                this.recognition.onerror = (e) => this.handleError(e);
+                this.recognition.onend = () => this.onListeningEnd();
+            }
+
+            setupEventListeners() {
+                const micButton = document.getElementById('micButton');
+                micButton.addEventListener('click', () => this.toggleListening());
+            }
+
+            toggleListening() {
+                if (!this.recognition) this.initializeRecognition();
+                
+                if (this.isListening) {
+                    this.recognition.stop();
+                } else {
+                    this.recognition.start();
+                }
+            }
+
+            onListeningStart() {
+                this.isListening = true;
+                document.getElementById('status').textContent = "Listening...";
+                document.getElementById('micButton').innerHTML = '🎤 Processing...';
+            }
+
+            processResult(event) {
+                const transcript = event.results[0][0].transcript.toLowerCase();
+                const response = this.generateResponse(transcript);
+                this.displayResponse(transcript, response);
+                this.speakResponse(response);
+            }
+
+            generateResponse(question) {
+                const matches = Object.entries(PROFILE)
+                    .filter(([key]) => question.includes(key))
+                    .sort((a, b) => b[0].length - a[0].length);
+
+                return matches.length > 0 ? matches[0][1] : PROFILE.default;
+            }
+
+            displayResponse(question, answer) {
+                const responseHTML = `
+                    <div class="response-card">
+                        <div class="user-prompt">You asked: "${question}"</div>
+                        <div class="ai-response">${answer}</div>
+                    </div>
+                `;
+                document.getElementById('responseContainer').insertAdjacentHTML('afterbegin', responseHTML);
+            }
+
+            speakResponse(text) {
+                const utterance = new SpeechSynthesisUtterance(text);
+                utterance.rate = 1;
+                utterance.pitch = 1;
+                window.speechSynthesis.speak(utterance);
+            }
+
+            handleError(error) {
+                console.error('Recognition error:', error);
+                document.getElementById('status').textContent = `Error: ${error.error}`;
+            }
+
+            onListeningEnd() {
+                this.isListening = false;
+                document.getElementById('micButton').innerHTML = '🎤 Start Voice Session';
+                document.getElementById('status').textContent = "Ready for next question";
+            }
+        }
+
+        // Initialize the voice agent
+        const voiceAgent = new VoiceAgent();
+    </script>
+</body>
+</html>
